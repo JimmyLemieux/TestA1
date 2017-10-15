@@ -277,7 +277,7 @@ ErrorCode createCalendar(char* fileName, Calendar** obj) {
                 strcpy(state[stateNum], "VALARM");
                 Alarm * newAlarm = malloc(sizeof(Alarm));
                 strcpy(newAlarm->action, "-1");
-                newAlarm->properties = initializeList(printProp, alarmDestroy, testCompare);
+                newAlarm->properties = initializeList(printProp, propDestroy, testCompare);
                 insertBack(&cal->event->alarms, newAlarm);
                 isTrigger = 0;
             } else {
@@ -308,7 +308,7 @@ ErrorCode createCalendar(char* fileName, Calendar** obj) {
                     Alarm * alarm = getFromBack(cal->event->alarms);
                     if (returnCode == INV_CAL) {
                         if (strcmp(alarm->action, "-1") == 0 || isTrigger == 0) {
-                            return INV_EVENT;
+                            returnCode = INV_EVENT;
                         }
                     }
                     free(state[stateNum]);
@@ -376,7 +376,7 @@ ErrorCode createCalendar(char* fileName, Calendar** obj) {
             Alarm * alarm = getFromBack(alarmList);
             Property * prop = malloc(sizeof(Property) + ((1 + strlen(fileContentsData[i])) *sizeof(char)));
             if (strcmp(fileContentsType[i], "") == 0 || fileContentsType[i] == NULL || strcmp(fileContentsData[i], "") == 0 || fileContentsData[i] == NULL) {
-                return INV_EVENT;
+                returnCode = INV_EVENT;
             }
             strcpy(prop->propName, fileContentsType[i]);
             strcpy(prop->propDescr, fileContentsData[i]);
