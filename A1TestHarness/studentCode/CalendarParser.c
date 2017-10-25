@@ -426,7 +426,6 @@ void deleteCalendar(Calendar* obj) {
         ListIterator iter = createIterator(obj->event->alarms);
 
         while ((elem = nextElement(&iter)) != NULL) {
-            free(elem->trigger);
             clearList(&elem->properties);
         }
     }
