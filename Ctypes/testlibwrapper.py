@@ -2,7 +2,7 @@
 from ctypes import *
 
 #we save the path to the library into a string, since we might need to access it more than once
-testLibPath = 'testlib.so'
+testLibPath = './testlib.so'
 
 #create a reference to the library module
 testlib = CDLL(testLibPath)
