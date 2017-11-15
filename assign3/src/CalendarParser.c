@@ -211,6 +211,81 @@ bool compareProp(const void * first, const void * second) {
   }
 }
 
+Calendar * createSimpleCalendar(char a[7][1000]) {printf("here\n");
+    Calendar * cal = malloc(sizeof(Calendar));
+
+    cal->version = 2.0;
+    strcpy(cal->prodID, a[1]);
+
+    cal->events = initializeList(printEvent, eventDestroy, testCompare);
+
+    Event * newEvent = malloc(sizeof(Event));
+    strcpy(newEvent->UID, a[2]);
+
+    if (strchr(a[3], 'T') != NULL && strlen(a[3]) > 14) {
+    
+    char date[9];
+    char time[7];
+    strncpy(date, a[3], 8);
+    date[8] = '\0';
+    char* p = strchr(a[3], 'T');
+    for(int i = 1; i < 7; i++) {
+      time[i-1] = p[i];
+      time[i] = '\0';
+    }
+    if (p[7] == 'Z') {
+      newEvent->creationDateTime.UTC = true;
+    } else {
+      newEvent->creationDateTime.UTC = false;
+    }
+    strcpy(newEvent->creationDateTime.time, time);
+    strcpy(newEvent->creationDateTime.date, date);
+
+    } else {
+          strcpy(newEvent->creationDateTime.time, "");
+          strcpy(newEvent->creationDateTime.date, "");
+    }
+
+    if (strchr(a[4], 'T') != NULL && strlen(a[4]) > 14) {
+    
+    char date2[9];
+    char time2[7];
+    strncpy(date2, a[3], 8);
+    date2[8] = '\0';
+    char* p2 = strchr(a[3], 'T');
+    for(int i = 1; i < 7; i++) {
+      time2[i-1] = p2[i];
+      time2[i] = '\0';
+    }
+    if (p2[7] == 'Z') {
+      newEvent->startDateTime.UTC = true;
+    } else {
+      newEvent->startDateTime.UTC = false;
+    }
+    strcpy(newEvent->startDateTime.time, time2);
+    strcpy(newEvent->startDateTime.date, date2);
+
+    } else {
+          strcpy(newEvent->startDateTime.time, "");
+          strcpy(newEvent->startDateTime.date, "");
+    }
+
+    newEvent->alarms = initializeList(printAlarm, alarmDestroy, testCompare);
+    Alarm * newAlarm = malloc(sizeof(Alarm));
+    strcpy(newAlarm->action, a[5]);
+    newAlarm->trigger = malloc(sizeof(char) * (strlen(a[6]) + 1));
+    strcpy(newAlarm->trigger, a[6]);
+    insertBack(&newEvent->alarms, newAlarm);
+    
+    insertBack(&cal->events, newEvent);
+    printf("Cal:%s\n", printCalendar(cal));
+    return cal;
+}
+
+int getNumOfEvents(Calendar * cal) {
+    return getLength(cal->events);
+}
+
 
 /** Function to create a Calendar object based on the contents of an iCalendar file.
  *@pre File name cannot be an empty string or NULL.  File name must have the .ics extension.
