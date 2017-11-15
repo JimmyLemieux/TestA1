@@ -1,8 +1,17 @@
+from ctypes import *
+from os import *
 from tkinter import *
 from tkinter import messagebox
 from tkinter.filedialog import *
 from tkinter import simpledialog
 from datetime import *
+
+class Calendar(Structure):
+    _fields_ = [
+        ("version", c_float),
+        ("prodID", c_byte * 1000),
+        ("events", c_void_p),
+        ("properties", c_void_p)]
 
 class Window(Frame):
     def __init__(self, master = None):
@@ -10,6 +19,54 @@ class Window(Frame):
         self.master = master
         self.init_window()
         self.previousIndex = -1;
+        self.openFile = ""
+        self.setupCal()
+
+    def printCalend(self):
+		
+        filename = self.openFile
+        fStr = filename.encode('utf-8')
+        
+        calPtr = POINTER(Calendar)()
+
+        self.logPrint(('returned = ',self.createCal(fStr,byref(calPtr)))) #notice the type
+
+        testCal = calPtr.contents
+        self.logPrint(('version = ', testCal.version))
+
+        stuff = cast(testCal.prodID, c_char_p)
+
+        self.logPrint(stuff.value.decode("utf-8"))
+        
+        calStr = self.printCal(calPtr)
+        self.logPrint(calStr.decode("ISO-8859-1"))
+
+    def setupCal(self):
+        calLibPath = './bin/icallib.so'
+        self.callib = CDLL(calLibPath)
+
+        self.createCal = self.callib.createCalendar
+        self.createCal.argtypes = [c_char_p,POINTER(POINTER(Calendar))]
+        self.createCal.restype = c_int
+
+        self.printCal = self.callib.printCalendar
+        self.printCal.restype = c_char_p
+        
+        self.numEvents = self.callib.getNumOfEvents
+        self.numEvents.argtypes = [POINTER(Calendar)]
+        self.numEvents.restype = c_int
+        
+        
+    def displayFileView(self):
+        calPtr = POINTER(Calendar)()
+        fStr = self.openFile.encode('utf-8')
+        errNum = self.createCal(fStr, byref(calPtr))
+        
+        calStr = self.printCal(calPtr)
+        #self.logPrint(calStr.decode("ISO-8859-1"))
+        
+        numOfEvents = self.numEvents(calPtr)
+        self.logPrint("Number of Events: " + str(numOfEvents))
 
     def init_window(self):
         self.master.title("iCalGUI")
@@ -191,17 +248,21 @@ class Window(Frame):
         self.listbox4.yview(*args)
 
     def open(self, *other):
-        self.logPrint('open')
-        filename = askopenfilename(initialdir="/", title="Select file", filetypes=(("iCalendar", "*.ics"),("All files", "*.*")))
+        dirname = getcwd()
+        path = askopenfilename(initialdir=dirname, title="Select file", filetypes=(("iCalendar", "*.ics"),("All files", "*.*")))
+        rootDir, filename = os.path.split(path)
         if filename:
-            try:
-                self.master.title(filename)
+            #try:
+            self.master.title(filename)
+            self.openFile = path
                 #display file in file view panel
+            self.displayFileView()
                 #display creation status in log window
-            except:
+            self.logPrint('opening file... ' + filename)
+            #except:
                 #display error in log window
-                self.logPrint("Error loading file")
-            return
+				#self.logPrint("Error loading file")
+            #return
 
     def save(self, *other):
         self.logPrint('save')
@@ -248,16 +309,41 @@ class Window(Frame):
     def createCal(self):
         self.logPrint('createCal')
 
-        prodID = simpledialog.askstring("Enter the prodID", "Enter the prodID")
-        UID = simpledialog.askstring("Enter the UID", "Enter the UID")
-        creationDateTime = simpledialog.askstring("Enter the creationDateTime", "Enter the creationDateTime")
-        action = simpledialog.askstring("Enter the action", "Enter the action")
-        trigger = simpledialog.askstring("Enter the trigger", "Enter the trigger")
+        prodID = simpledialog.askstring("Enter the prodID", "Enter the prodID").encode('utf-8')
+        UID = simpledialog.askstring("Enter the UID", "Enter the UID").encode('utf-8')
+        startDateTime = simpledialog.askstring("Enter the startDateTime", "Enter the startDateTime").encode('utf-8')
+        action = simpledialog.askstring("Enter the action", "Enter the action").encode('utf-8')
+        trigger = simpledialog.askstring("Enter the trigger", "Enter the trigger").encode('utf-8')
+
+        now = datetime.now()
+        date = now.strftime('%Y%m%d')
+        time = now.microsecond
+        creationDateTime = date + 'T' + str(time) + 'Z'
+        b_creationDateTime = creationDateTime.encode('utf-8')
+
+        testArr =((c_char * 1000) * 7)()
+
+        testArr[0].value = b"2.0"
+        testArr[1].value = prodID
+        testArr[2].value = UID
+        testArr[3].value = b_creationDateTime
+        testArr[4].value = startDateTime
+        testArr[5].value = action
+        testArr[6].value = trigger 
 
         #if valid
+        createSimpleCal = self.callib.createSimpleCalendar
+        createSimpleCal.argtypes = [(c_char * 1000) * 7]
+        createSimpleCal.restype = POINTER(Calendar)
+
+        newCalPtr = createSimpleCal(testArr)
+
+        newCalStr = self.printCal(newCalPtr)
+        self.logPrint(newCalStr.decode("ISO-8859-1"))
+        
         messagebox.showinfo("Important", "Reminder this Calendar has no Events. You must create events using the <create event> option in the menu")
-        logtext = ("Version:2.0 prodID:%s UID:%s creationDateTime:%s action:%s trigger:%s", prodID, UID, creationDateTime, action, trigger)
-        self.logPrint(logtext)
+
+        #self.logPrint(logtext)
 
     def createEvt(self):
         self.logPrint('createEvt')
