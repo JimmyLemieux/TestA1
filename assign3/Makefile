@@ -17,5 +17,5 @@ pyth: bin/CalendarParser.o bin/LinkedListAPI.o
 	gcc -std=c11 -shared -Iinclude -o bin/icallib.so -fPIC bin/CalendarParser.o bin/LinkedListAPI.o
 
 clean:
-	rm bin/LinkedListAPI.o bin/libllist.a bin/CalendarParser.o bin/libcparse.a bin/A2main
-	rm -rf *.o *.so
+	rm bin/LinkedListAPI.o bin/libllist.a bin/CalendarParser.o bin/libcparse.a
+	rm bin/icallib.so

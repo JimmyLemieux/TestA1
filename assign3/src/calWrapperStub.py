@@ -40,7 +40,7 @@ printCal.restype = c_char_p             #this CANNOT be commented out! Otherwise
 calPtr = POINTER(Calendar)()
 
 #call the library function createCalendar() using our alias createCal
-print('returned = ',createCal(fStr,byref(calPtr))) #notice the type
+print('returned = ',createCal(fStr,c(calPtr))) #notice the type
 
 #we need to dereference calPtr - which is a pointer to Calendar object
 #the .contents property of a pointer returns the thing it points to

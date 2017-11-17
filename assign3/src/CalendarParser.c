@@ -211,24 +211,56 @@ bool compareProp(const void * first, const void * second) {
   }
 }
 
-Calendar * createSimpleCalendar(char a[7][1000]) {printf("here\n");
+Calendar * createSimpleCalendar(char a[1][1000]) {
     Calendar * cal = malloc(sizeof(Calendar));
 
     cal->version = 2.0;
-    strcpy(cal->prodID, a[1]);
+    strcpy(cal->prodID, a[0]);
 
     cal->events = initializeList(printEvent, eventDestroy, testCompare);
+    cal->properties = initializeList(printProp, propDestroy, testCompare);
+    
+    return cal;
+}
 
-    Event * newEvent = malloc(sizeof(Event));
-    strcpy(newEvent->UID, a[2]);
+Calendar * createEvent(Calendar * cal, char a[3][1000]) {
+  Event * newEvent = malloc(sizeof(Event));
+    strcpy(newEvent->UID, a[0]);
 
-    if (strchr(a[3], 'T') != NULL && strlen(a[3]) > 14) {
+    newEvent->properties = initializeList(printProp, propDestroy, testCompare);
+    newEvent->alarms = initializeList(printAlarm, alarmDestroy, testCompare);
+    
+    if (strchr(a[1], 'T') != NULL && strlen(a[1]) > 14) {
     
     char date[9];
     char time[7];
-    strncpy(date, a[3], 8);
+    strncpy(date, a[1], 8);
     date[8] = '\0';
-    char* p = strchr(a[3], 'T');
+    char* p = strchr(a[1], 'T');
+    for(int i = 1; i < 7; i++) {
+      time[i-1] = p[i];
+      time[i] = '\0';
+    }
+    if (p[7] == 'Z') {
+      newEvent->startDateTime.UTC = true;
+    } else {
+      newEvent->startDateTime.UTC = false;
+    }
+    strcpy(newEvent->startDateTime.time, time);
+    strcpy(newEvent->startDateTime.date, date);
+
+    } else {
+          strcpy(newEvent->startDateTime.time, "");
+          strcpy(newEvent->startDateTime.date, "");
+    }
+    
+    if (strchr(a[2], 'T') != NULL && strlen(a[2]) > 14) {
+    
+    char date[9];
+    char time[7];
+    strncpy(date, a[2], 8);
+    date[8] = '\0';
+    char* p = strchr(a[2], 'T');
     for(int i = 1; i < 7; i++) {
       time[i-1] = p[i];
       time[i] = '\0';
@@ -246,46 +278,234 @@ Calendar * createSimpleCalendar(char a[7][1000]) {printf("here\n");
           strcpy(newEvent->creationDateTime.date, "");
     }
 
-    if (strchr(a[4], 'T') != NULL && strlen(a[4]) > 14) {
-    
-    char date2[9];
-    char time2[7];
-    strncpy(date2, a[3], 8);
-    date2[8] = '\0';
-    char* p2 = strchr(a[3], 'T');
-    for(int i = 1; i < 7; i++) {
-      time2[i-1] = p2[i];
-      time2[i] = '\0';
-    }
-    if (p2[7] == 'Z') {
-      newEvent->startDateTime.UTC = true;
-    } else {
-      newEvent->startDateTime.UTC = false;
-    }
-    strcpy(newEvent->startDateTime.time, time2);
-    strcpy(newEvent->startDateTime.date, date2);
-
-    } else {
-          strcpy(newEvent->startDateTime.time, "");
-          strcpy(newEvent->startDateTime.date, "");
-    }
-
-    newEvent->alarms = initializeList(printAlarm, alarmDestroy, testCompare);
-    Alarm * newAlarm = malloc(sizeof(Alarm));
-    strcpy(newAlarm->action, a[5]);
-    newAlarm->trigger = malloc(sizeof(char) * (strlen(a[6]) + 1));
-    strcpy(newAlarm->trigger, a[6]);
-    insertBack(&newEvent->alarms, newAlarm);
+    //Property * p = malloc(sizeof(Property) + sizeof(char)*(6 + strlen(a[3])));
+    //strcpy(p->propName, "DTEND");
+    //strcpy(p->propDescr, a[3]);
+    //insertBack(&newEvent->properties, p);
     
     insertBack(&cal->events, newEvent);
-    printf("Cal:%s\n", printCalendar(cal));
     return cal;
+}
+
+Calendar * createAlarm(Calendar * obj, char a[2][1000], int eventNum) {
+  if (obj->events.head != NULL) {
+        Event* elemE;
+        ListIterator iterE = createIterator(obj->events);
+        int i = 0;
+    while ((elemE = nextElement(&iterE)) != NULL) {
+        Event * event = elemE;
+	int k = 0;
+	if (i == eventNum) {
+	  Alarm * newAlarm = malloc(sizeof(Alarm));
+          strcpy(newAlarm->action, a[0]);
+          newAlarm->properties = initializeList(printProp, propDestroy, testCompare);
+	  newAlarm->trigger = malloc(sizeof(char) * (strlen(a[1]) + 1));
+          strcpy(newAlarm->trigger, a[1]);
+          insertBack(&event->alarms, newAlarm);
+	}
+	i++;
+    }
+  }
+  return obj;
 }
 
 int getNumOfEvents(Calendar * cal) {
     return getLength(cal->events);
 }
 
+int getNumOfProps(Calendar * obj, int eventNum) {
+
+    int props = 0;
+    if (obj->events.head != NULL) {
+        Event* elemE;
+        ListIterator iterE = createIterator(obj->events);
+        int i = 0;
+	while ((elemE = nextElement(&iterE)) != NULL) {
+	  Event * event = elemE;
+	  int k = 0;
+	  if (event->properties.head != NULL) {
+	    Property* elem;
+	    ListIterator iter = createIterator(event->properties);
+
+	    while ((elem = nextElement(&iter)) != NULL) {
+	      Property * prop = elem;
+	      k++;
+	    }
+	    if (i == eventNum) {
+	      props = k;
+	    }
+	  }
+	  i++;
+	}
+    }
+    return props;
+}
+
+int getNumOfAlarms(Calendar * obj, int eventNum) {
+
+    int alarms = 0;
+    if (obj->events.head != NULL) {
+        Event* elemE;
+        ListIterator iterE = createIterator(obj->events);
+        int i = 0;
+    while ((elemE = nextElement(&iterE)) != NULL) {
+        Event * event = elemE;
+	int k = 0;
+	if (event->alarms.head != NULL) {
+        Alarm* elem;
+        ListIterator iter = createIterator(event->alarms);
+
+        while ((elem = nextElement(&iter)) != NULL) {
+            Alarm * alarm = elem;
+            k++;
+        }
+	if (i == eventNum) {
+	  alarms = k;
+	}
+	}
+	i++;
+    }
+    }
+    return alarms;
+}
+
+char * getSummary(Calendar * obj, int eventNum) {
+
+    int props = 0;
+    if (obj->events.head != NULL) {
+        Event* elemE;
+        ListIterator iterE = createIterator(obj->events);
+        int i = 0;
+    while ((elemE = nextElement(&iterE)) != NULL) {
+        Event * event = elemE;
+	if (event->properties.head != NULL) {
+	  Property* elem;
+	  ListIterator iter = createIterator(event->properties);
+	  if (i == eventNum) {
+	    while ((elem = nextElement(&iter)) != NULL) {
+	      Property * prop = elem;
+	      if (strcmp(prop->propName, "SUMMARY") == 0) {
+		return prop->propDescr;
+	      }
+	    }
+	    return "";
+	  }
+	}
+	i++;
+    }
+    }
+    return "";
+}
+
+char * printAlarmsForEvent(Calendar * obj, int eventNum) {
+
+ char* printStr;
+ char* tmpStr;
+  
+ tmpStr = malloc(sizeof(char)*1000);
+ printStr = malloc(sizeof(char)*50000);
+  
+ if (obj->events.head != NULL) {
+    Event* elemE;
+    ListIterator iterE = createIterator(obj->events);
+    int i = 0;
+    while ((elemE = nextElement(&iterE)) != NULL) {
+        Event * event = elemE; 
+	if (i == eventNum) {
+            if (event->alarms.head != NULL) {
+                Alarm* elemA;
+                ListIterator iterA = createIterator(event->alarms);
+
+                sprintf(tmpStr, "      Alarms:\n");
+                strcat(printStr, tmpStr);
+
+                while ((elemA = nextElement(&iterA)) != NULL) {
+                    Alarm * alarm = elemA;
+                    sprintf(tmpStr, "\t\tAction: %s\n\t\tTrigger: %s\n", alarm->action, alarm->trigger);
+                    strcat(printStr, tmpStr);
+                    //alarm properties
+
+                    if (alarm->properties.head != NULL) {
+                        Property* elem;
+                        ListIterator iter = createIterator(alarm->properties);
+
+			sprintf(tmpStr, "\t\tProperties:\n");
+			strcat(printStr, tmpStr);
+			
+                        while ((elem = nextElement(&iter)) != NULL) {
+                            Property * prop = elem;
+                            sprintf(tmpStr, "\t\t- %s:%s\n", prop->propName, prop->propDescr);
+                            strcat(printStr, tmpStr);
+                        }
+                    }
+		    sprintf(tmpStr, "\n");
+                    strcat(printStr, tmpStr);
+                }
+            } else {
+	      sprintf(tmpStr, "      No Alarms in Event\n");
+              strcat(printStr, tmpStr);
+	    }
+  	}
+	i++;
+    }
+  }
+
+ printStr[0] = ' ';
+ printStr[1] = ' ';
+ printStr[2] = ' ';
+ printStr[3] = ' ';
+ printStr[4] = ' ';
+ printStr[5] = ' ';
+ 
+ free(tmpStr);
+
+ return printStr;
+}
+
+char * printPropsForEvent(Calendar * obj, int eventNum) {
+
+ char* printStr;
+ char* tmpStr;
+  
+ tmpStr = malloc(sizeof(char)*1000);
+ printStr = malloc(sizeof(char)*50000);
+
+ if (obj->events.head != NULL) {
+        Event* elemE;
+        ListIterator iterE = createIterator(obj->events);
+	int i = 0;
+        while ((elemE = nextElement(&iterE)) != NULL) {
+            Event * event = elemE;
+	    if (i == eventNum) {
+	      if (event->properties.head != NULL) {
+                Property* elem;
+                ListIterator iter = createIterator(event->properties);
+		sprintf(tmpStr, "      Properties:\n");
+		strcat(printStr, tmpStr);
+                while ((elem = nextElement(&iter)) != NULL) {
+                    Property * prop = elem;
+                    sprintf(tmpStr, "\t\t- %s:%s\n", prop->propName, prop->propDescr);
+                    strcat(printStr, tmpStr);
+                }
+              } else {
+		sprintf(tmpStr, "      No Optional Properties in Event\n");
+		strcat(printStr, tmpStr);
+	      }
+	    }
+	    i++;
+	}
+ }
+
+ printStr[0] = ' ';
+ printStr[1] = ' ';
+ printStr[2] = ' ';
+ printStr[3] = ' ';
+ printStr[4] = ' ';
+ printStr[5] = ' ';
+ 
+ free(tmpStr);
+ return printStr;
+}
 
 /** Function to create a Calendar object based on the contents of an iCalendar file.
  *@pre File name cannot be an empty string or NULL.  File name must have the .ics extension.
@@ -575,7 +795,7 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj) {
             if (strcmp(fileContentsType[i], "IANA-COMP") == 0 || strcmp(fileContentsType[i], "X-COMP") == 0) {
                 returnCode = INV_EVENT;
             }
-            if (strcmp(fileContentsType[i], "CLASS") == 0 || strcmp(fileContentsType[i], "CREATED") == 0 || strcmp(fileContentsType[i], "DESCRIPTION") == 0 || strcmp(fileContentsType[i], "GEO") == 0 || strcmp(fileContentsType[i], "LAST-MODIFIED") == 0 || strcmp(fileContentsType[i], "LOCATION") == 0 || strcmp(fileContentsType[i], "ORGANIZER") == 0 || strcmp(fileContentsType[i], "PRIORITY") == 0 || strcmp(fileContentsType[i], "SEQ") == 0 || strcmp(fileContentsType[i], "STATUS") == 0 || strcmp(fileContentsType[i], "SUMMARY") == 0 || strcmp(fileContentsType[i], "TRANSP") == 0 || strcmp(fileContentsType[i], "URL") == 0 || strcmp(fileContentsType[i], "RECURID") == 0 || strcmp(fileContentsType[i], "RRULE") == 0 || strcmp(fileContentsType[i], "DTEND") == 0 || strcmp(fileContentsType[i], "DURATION") == 0 || strcmp(fileContentsType[i], "ATTACH") == 0 || strcmp(fileContentsType[i], "ATTENDEE") == 0 || strcmp(fileContentsType[i], "CATEGORIES") == 0 || strcmp(fileContentsType[i], "COMMENT") == 0 || strcmp(fileContentsType[i], "CONTACT") == 0 || strcmp(fileContentsType[i], "EXDATE") == 0 || strcmp(fileContentsType[i], "RSTATUS") == 0 || strcmp(fileContentsType[i], "RELATED") == 0 || strcmp(fileContentsType[i], "RESOURCES") == 0 || strcmp(fileContentsType[i], "RDATE") == 0) {
+            if (strcmp(fileContentsType[i], "CLASS") == 0 || strcmp(fileContentsType[i], "CREATED") == 0 || strcmp(fileContentsType[i], "DESCRIPTION") == 0 || strcmp(fileContentsType[i], "GEO") == 0 || strcmp(fileContentsType[i], "LAST-MODIFIED") == 0 || strcmp(fileContentsType[i], "LOCATION") == 0 || strcmp(fileContentsType[i], "ORGANIZER") == 0 || strcmp(fileContentsType[i], "PRIORITY") == 0 || strcmp(fileContentsType[i], "SEQ") == 0 || strcmp(fileContentsType[i], "STATUS") == 0 || strcmp(fileContentsType[i], "SUMMARY") == 0 || strcmp(fileContentsType[i], "TRANSP") == 0 || strcmp(fileContentsType[i], "URL") == 0 || strcmp(fileContentsType[i], "RECURID") == 0 || strcmp(fileContentsType[i], "RRULE") == 0 || strcmp(fileContentsType[i], "DTEND") == 0 || strcmp(fileContentsType[i], "DURATION") == 0 || strcmp(fileContentsType[i], "ATTACH") == 0 || strcmp(fileContentsType[i], "ATTENDEE") == 0 || strcmp(fileContentsType[i], "CATEGORIES") == 0 || strcmp(fileContentsType[i], "COMMENT") == 0 || strcmp(fileContentsType[i], "CONTACT") == 0 || strcmp(fileContentsType[i], "EXDATE") == 0 || strcmp(fileContentsType[i], "RSTATUS") == 0 || strcmp(fileContentsType[i], "RELATED") == 0 || strcmp(fileContentsType[i], "RESOURCES") == 0 || strcmp(fileContentsType[i], "RDATE") == 0 || strcmp(fileContentsType[i], "SEQUENCE") == 0) {
             } else {
                 returnCode = INV_EVENT;
             }
@@ -1028,7 +1248,7 @@ ICalErrorCode validateCalendar(const Calendar* obj) {
                   //alarm properties
                   if (alarm->properties.head != NULL) {
                       Property* elemAP;
-                      ListIterator iterAP = createIterator(event->properties);
+                      ListIterator iterAP = createIterator(alarm->properties);
                       char tempList[10000] = "ACTIONTRIGGER";
 
                       while ((elemAP = nextElement(&iterAP)) != NULL) {
@@ -1054,7 +1274,7 @@ ICalErrorCode validateCalendar(const Calendar* obj) {
 
               while ((elemE = nextElement(&iterE)) != NULL) {
                   Property * prop = elemE;
-                  if (strcmp(prop->propName, "DTSTART") == 0 || strcmp(prop->propName, "CLASS") == 0 || strcmp(prop->propName, "CREATED") == 0 || strcmp(prop->propName, "DESCRIPTION") == 0 || strcmp(prop->propName, "GEO") == 0 || strcmp(prop->propName, "LAST-MODIFIED") == 0 || strcmp(prop->propName, "LOCATION") == 0 || strcmp(prop->propName, "ORGANIZER") == 0 || strcmp(prop->propName, "PRIORITY") == 0 || strcmp(prop->propName, "SEQ") == 0 || strcmp(prop->propName, "STATUS") == 0 || strcmp(prop->propName, "SUMMARY") == 0 || strcmp(prop->propName, "TRANSP") == 0 || strcmp(prop->propName, "URL") == 0 || strcmp(prop->propName, "RECURID") == 0 || strcmp(prop->propName, "RRULE") == 0 || strcmp(prop->propName, "DTEND") == 0 || strcmp(prop->propName, "DURATION") == 0 || strcmp(prop->propName, "ATTACH") == 0 || strcmp(prop->propName, "ATTENDEE") == 0 || strcmp(prop->propName, "CATEGORIES") == 0 || strcmp(prop->propName, "COMMENT") == 0 || strcmp(prop->propName, "CONTACT") == 0 || strcmp(prop->propName, "EXDATE") == 0 || strcmp(prop->propName, "RSTATUS") == 0 || strcmp(prop->propName, "RELATED") == 0 || strcmp(prop->propName, "RESOURCES") == 0 || strcmp(prop->propName, "RDATE") == 0) {
+                  if (strcmp(prop->propName, "DTSTART") == 0 || strcmp(prop->propName, "CLASS") == 0 || strcmp(prop->propName, "CREATED") == 0 || strcmp(prop->propName, "DESCRIPTION") == 0 || strcmp(prop->propName, "GEO") == 0 || strcmp(prop->propName, "LAST-MODIFIED") == 0 || strcmp(prop->propName, "LOCATION") == 0 || strcmp(prop->propName, "ORGANIZER") == 0 || strcmp(prop->propName, "PRIORITY") == 0 || strcmp(prop->propName, "SEQ") == 0 || strcmp(prop->propName, "STATUS") == 0 || strcmp(prop->propName, "SUMMARY") == 0 || strcmp(prop->propName, "TRANSP") == 0 || strcmp(prop->propName, "URL") == 0 || strcmp(prop->propName, "RECURID") == 0 || strcmp(prop->propName, "RRULE") == 0 || strcmp(prop->propName, "DTEND") == 0 || strcmp(prop->propName, "DURATION") == 0 || strcmp(prop->propName, "ATTACH") == 0 || strcmp(prop->propName, "ATTENDEE") == 0 || strcmp(prop->propName, "CATEGORIES") == 0 || strcmp(prop->propName, "COMMENT") == 0 || strcmp(prop->propName, "CONTACT") == 0 || strcmp(prop->propName, "EXDATE") == 0 || strcmp(prop->propName, "RSTATUS") == 0 || strcmp(prop->propName, "RELATED") == 0 || strcmp(prop->propName, "RESOURCES") == 0 || strcmp(prop->propName, "RDATE") == 0 || strcmp(prop->propName, "SEQUENCE") == 0) {
                   } else {
                       return INV_EVENT;
                   }
@@ -1066,6 +1286,8 @@ ICalErrorCode validateCalendar(const Calendar* obj) {
               }
           }
       }
+  } else {
+    return INV_CAL;
   }
   return OK;
 }
